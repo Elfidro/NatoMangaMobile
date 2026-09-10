@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NatoManga - Mobile UI (always dark)
 // @namespace    luigi.natomanga
-// @version      1.3.0
+// @version      1.4.0
 // @description  Slim sticky header, forced dark mode, bottom thumb-zone nav, native swipe carousel, cleaner cards, per-manga blocklist, infinite scroll.
 // @author       Elfidro
 // @homepageURL  https://github.com/Elfidro/NatoMangaMobile
@@ -63,17 +63,28 @@
    * ============================================================= */
   try { localStorage.setItem('themeMode', 'dark'); } catch (e) {}
 
+  // Watch ONLY the body's class attribute. Observing the whole tree fires
+  // this callback for every node inserted while the page parses.
+  var themeObserver = new MutationObserver(pinDark);
+
+  // MUST be idempotent, and MUST NOT write when nothing needs changing.
+  // classList emits a mutation record even for writes that change nothing:
+  // .remove() of an absent token and .add() of a present one both fire.
+  // An unconditional write here feeds our own observer and spins forever,
+  // pinning the main thread so the page never finishes loading.
   function pinDark() {
     var b = document.body;
     if (!b) return;
-    if (!b.classList.contains('dark')) b.classList.add('dark');
-    b.classList.remove('light');
-  }
 
-  // Watch ONLY the body's class attribute. Observing the whole tree fires
-  // this callback for every node inserted while the page parses - thousands
-  // of synchronous localStorage reads, which stalls load badly on a phone.
-  var themeObserver = new MutationObserver(pinDark);
+    // Guard 1: already correct, so touch nothing at all.
+    if (b.classList.contains('dark') && !b.classList.contains('light')) return;
+
+    // Guard 2: never observe our own writes, even when a change is real.
+    themeObserver.disconnect();
+    b.classList.add('dark');
+    b.classList.remove('light');
+    themeObserver.observe(b, { attributes: true, attributeFilter: ['class'] });
+  }
 
   function watchTheme() {
     if (!document.body) return false;
