@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NatoManga - Mobile UI (always dark)
 // @namespace    luigi.natomanga
-// @version      1.2.0
+// @version      1.3.0
 // @description  Slim sticky header, forced dark mode, bottom thumb-zone nav, native swipe carousel, cleaner cards, per-manga blocklist, infinite scroll.
 // @author       Elfidro
 // @homepageURL  https://github.com/Elfidro/NatoMangaMobile
@@ -418,13 +418,22 @@
    * cards are filtered on the way in, which is what keeps a page
    * feeling "full" even when a lot is hidden.
    * ============================================================= */
+  // Requests are deliberately paced. Firing pages back-to-back looks like
+  // scraping and gets the IP served a Cloudflare challenge, which locks the
+  // whole site - not just this script - until it ages out.
+  var MIN_FETCH_GAP_MS = 1500;
+  var MAX_EMPTY_STREAK = 3;
+
   var infinite = {
     container: null,
     anchor: null,   // new cards go in after this node
     nextUrl: null,
     loading: false,
     done: false,
-    seen: {}
+    seen: {},
+    lastFetchAt: 0,
+    emptyStreak: 0, // consecutive fetches that yielded nothing visible
+    timer: null
   };
 
   function pageParam(href) {
@@ -467,7 +476,21 @@
 
   function loadMore() {
     if (infinite.loading || infinite.done || !infinite.nextUrl || !infinite.container) return;
+
+    // Pace requests. If we were called too soon, wait out the remainder
+    // instead of dropping the request or firing it immediately.
+    var since = Date.now() - infinite.lastFetchAt;
+    if (since < MIN_FETCH_GAP_MS) {
+      if (infinite.timer) return;
+      infinite.timer = setTimeout(function () {
+        infinite.timer = null;
+        loadMore();
+      }, MIN_FETCH_GAP_MS - since);
+      return;
+    }
+
     infinite.loading = true;
+    infinite.lastFetchAt = Date.now();
     setStatus('Loading more…');
 
     fetch(infinite.nextUrl, { credentials: 'same-origin' })
@@ -476,6 +499,15 @@
         return r.text();
       })
       .then(function (html) {
+        // If Cloudflare starts challenging, stop dead. Retrying is what
+        // digs the hole deeper and gets the whole site locked out.
+        if (/__cf_chl|challenge-platform|Just a moment/i.test(html)) {
+          infinite.loading = false;
+          infinite.done = true;
+          setStatus('Paused — the site is asking for a security check. Reload the page.');
+          return;
+        }
+
         var doc = new DOMParser().parseFromString(html, 'text/html');
         var base = doc.createElement('base');
         base.href = infinite.nextUrl;
@@ -503,12 +535,25 @@
 
         if (!infinite.nextUrl) {
           infinite.done = true;
-          setStatus(added ? 'That’s everything.' : 'That’s everything.');
+          setStatus('That’s everything.');
+          return;
+        }
+
+        setStatus('');
+
+        // If a whole page was blocked, fetch one more so the user still
+        // gets a screenful - but cap the chain. Without a cap this walks
+        // the entire catalogue at speed and trips Cloudflare.
+        if (added === 0) {
+          infinite.emptyStreak++;
+          if (infinite.emptyStreak < MAX_EMPTY_STREAK) {
+            loadMore();
+          } else {
+            infinite.emptyStreak = 0;
+            setStatus('Everything on the next few pages is hidden — scroll to keep looking.');
+          }
         } else {
-          setStatus('');
-          // If everything we just pulled in was blocked, keep going so
-          // the user still gets a screenful.
-          if (added === 0) loadMore();
+          infinite.emptyStreak = 0;
         }
       })
       .catch(function (err) {
