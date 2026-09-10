@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NatoManga - Mobile UI (always dark)
 // @namespace    luigi.natomanga
-// @version      1.4.0
+// @version      1.5.0
 // @description  Slim sticky header, forced dark mode, bottom thumb-zone nav, native swipe carousel, cleaner cards, per-manga blocklist, infinite scroll.
 // @author       Elfidro
 // @homepageURL  https://github.com/Elfidro/NatoMangaMobile
@@ -177,6 +177,11 @@
     '  .leftCol .daily-update .title,.daily-update .update-title,.xem-nhieu .all-title,',
     '  #history-sidebar .history-title,.panel-category .panel-category-title{',
     '    background:transparent!important;background-image:none!important;width:auto!important;}',
+    /* Same (0,2,1) grouped rule from the site's dark theme applies here -
+       .xem-nhieu .all-title alone loses to body.dark .all-title. */
+    '  body.dark .xem-nhieu .all-title,body.dark .daily-update .title,',
+    '  body.dark .panel-category .panel-category-title,body.dark #history-sidebar .history-title{',
+    '    background:transparent!important;background-image:none!important;}',
     '  #history-sidebar-header,.history-sidebar-header{background:transparent!important;}',
     /* .daily-update floats and its title is absolutely positioned, which
        collapses the row to 3px and drops the heading behind the cards. */
@@ -250,6 +255,26 @@
     /* ---- list / genre / search page cards ---- */
     '  .comic-list{padding:0 10px!important;display:flex!important;flex-direction:column!important;',
     '    gap:8px!important;}',
+
+    /* The breadcrumb and the filter panel are siblings of the cards inside
+       .comic-list, and the site paints both with its own grey slabs - they
+       read as foreign blocks stacked above the dark cards, and the filter
+       sits 7px narrower and 1px off from the card column. */
+    /* The "body.dark" prefix is required, not cosmetic: the site's dark
+       theme paints these from a grouped selector at (0,2,1) with
+       !important, which outranks a plain two-class override. */
+    '  body.dark .comic-list .breadcrumb,.comic-list .breadcrumb{',
+    '    background:transparent!important;padding:2px 2px 0!important;',
+    '    margin:0!important;font-size:12px!important;line-height:1.5!important;color:var(--nm-muted)!important;}',
+    '  .comic-list .breadcrumb p{margin:0!important;}',
+    '  .comic-list .breadcrumb a{color:var(--nm-muted)!important;}',
+    '  .comic-list .breadcrumb .separator{opacity:.45;}',
+    '  .comic-list details.manga-filter-details{width:auto!important;margin:0!important;',
+    '    background:var(--nm-surface)!important;border:1px solid var(--nm-line)!important;',
+    '    border-radius:12px!important;overflow:hidden;}',
+    '  .comic-list details.manga-filter-details > summary{padding:13px 12px!important;',
+    '    color:var(--nm-text)!important;font:600 12px/1 var(--nm-font)!important;',
+    '    letter-spacing:.06em;text-transform:uppercase;list-style:none;cursor:pointer;}',
     '  .list-comic-item-wrap{position:relative;display:grid!important;',
     '    grid-template-columns:74px 1fr;grid-template-rows:auto auto auto;',
     '    column-gap:11px;row-gap:5px;align-content:start;',
