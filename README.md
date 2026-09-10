@@ -2,7 +2,7 @@
 
 A Tampermonkey userscript that rebuilds [natomanga.com](https://www.natomanga.com) as a phone-first reader: permanent dark mode, a slim header, a thumb-zone bottom nav, a per-manga blocklist, and infinite scroll.
 
-Built for Tampermonkey on Android (Firefox / Kiwi), but it works in desktop browsers too — the mobile layout only applies below 820px, so wide screens keep the site's normal layout with dark mode and popup blocking still active.
+Built for Tampermonkey on Android (Firefox / Kiwi), but it works in desktop browsers too — the mobile layout only applies below 820px, so wide screens keep the site's normal layout with dark mode still active.
 
 ## Install
 
@@ -39,16 +39,8 @@ The homepage has no pager (it's a fixed 56-card list), so its "VIEW MORE" button
 - The popular carousel becomes a native CSS scroll-snap strip — finger-swipe, no arrow overlays.
 - Listings become rounded cards with cover art and chapter chips.
 
-### Popup and redirect blocking
-- `window.open` is stubbed for cross-site targets; same-site opens still work.
-- `location.assign` / `location.replace` are guarded against cross-site calls.
-- Cross-origin iframes are removed as they're inserted — that's what usually performs the top-frame navigation.
-- The site's `/api/widget` ad payload is answered with an empty object, so the ad slots never populate.
-
-This is not a replacement for a real content blocker; it targets the specific redirect vectors this site uses.
-
 ## Notes
 
-- Only the mobile layout is gated behind the 820px breakpoint. Dark mode and popup blocking apply at every width.
+- Only the mobile layout is gated behind the 820px breakpoint. Dark mode applies at every width.
 - The script also matches `*.manganato.com`, which uses the same page structure.
 - Selectors track the site's current markup (`.itemupdate`, `.list-comic-item-wrap`, `.panel_page_number`). If natomanga redesigns, the layout rules are the first thing that will need updating.

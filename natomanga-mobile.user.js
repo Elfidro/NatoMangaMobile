@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NatoManga - Mobile UI (always dark)
 // @namespace    luigi.natomanga
-// @version      1.0.0
+// @version      1.1.0
 // @description  Slim sticky header, forced dark mode, bottom thumb-zone nav, native swipe carousel, cleaner cards, per-manga blocklist, infinite scroll.
 // @author       Elfidro
 // @homepageURL  https://github.com/Elfidro/NatoMangaMobile
@@ -52,100 +52,6 @@
     var m = /\/manga\/([^/?#]+)/.exec(href || '');
     return m ? m[1] : null;
   }
-
-  /* ===============================================================
-   * 0.5 ANTI-REDIRECT / ANTI-POPUNDER
-   * Runs at document-start so it lands before the page's own scripts.
-   * Three vectors on this site:
-   *   a) popunders via window.open on the first tap anywhere
-   *   b) cross-origin ad iframes that navigate the top frame
-   *   c) the /api/widget payload that feeds the [data-zone] slots
-   * Same-origin navigation is left completely alone.
-   * ============================================================= */
-  var SITE_HOST = /(^|\.)(natomanga\.com|manganato\.com)$/i;
-
-  function sameSite(url) {
-    try { return SITE_HOST.test(new URL(url, location.href).hostname); }
-    catch (e) { return false; }
-  }
-
-  // (a) window.open - allow same-site, stub out everything else.
-  (function () {
-    var realOpen = window.open;
-    var stub = {
-      closed: true, close: function () {}, focus: function () {}, blur: function () {},
-      postMessage: function () {}, document: { write: function () {}, close: function () {} }
-    };
-    try {
-      Object.defineProperty(window, 'open', {
-        configurable: false,
-        value: function (url) {
-          if (url && sameSite(url)) return realOpen.apply(window, arguments);
-          console.info('[natomanga-mobile] blocked popup:', url);
-          return stub;
-        }
-      });
-    } catch (e) {}
-  })();
-
-  // (a2) scripted cross-site navigation. These are often non-configurable,
-  // hence the try/catch - it's a best-effort layer on top of the rest.
-  ['assign', 'replace'].forEach(function (fn) {
-    try {
-      var orig = location[fn].bind(location);
-      Object.defineProperty(location, fn, {
-        configurable: true,
-        value: function (u) {
-          if (!sameSite(u)) { console.info('[natomanga-mobile] blocked redirect:', u); return; }
-          return orig(u);
-        }
-      });
-    } catch (e) {}
-  });
-
-  // (c) starve the ad widget: answer its own payload request with nothing.
-  (function () {
-    var AD_URL = /\/api\/widget|\/ads?\//i;
-
-    var realFetch = window.fetch;
-    if (realFetch) {
-      window.fetch = function (input) {
-        var u = typeof input === 'string' ? input : (input && input.url) || '';
-        if (AD_URL.test(u)) {
-          return Promise.resolve(new Response('{"items":{}}', {
-            status: 200, headers: { 'Content-Type': 'application/json' }
-          }));
-        }
-        return realFetch.apply(this, arguments);
-      };
-    }
-
-    var realXhrOpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function (method, url) {
-      if (AD_URL.test(String(url))) arguments[1] = 'data:application/json,{}';
-      return realXhrOpen.apply(this, arguments);
-    };
-
-    try { localStorage.removeItem('__widget_data:/api/widget'); } catch (e) {}
-  })();
-
-  // (b) strip cross-origin iframes as they appear - that is what actually
-  // performs the top-frame navigation.
-  new MutationObserver(function (muts) {
-    muts.forEach(function (m) {
-      Array.prototype.forEach.call(m.addedNodes, function (n) {
-        if (n.nodeType !== 1) return;
-        var frames = n.tagName === 'IFRAME' ? [n] : (n.querySelectorAll ? n.querySelectorAll('iframe') : []);
-        Array.prototype.forEach.call(frames, function (f) {
-          var src = f.getAttribute('src') || '';
-          if (src && !sameSite(src)) {
-            console.info('[natomanga-mobile] removed ad frame:', src);
-            f.remove();
-          }
-        });
-      });
-    });
-  }).observe(document.documentElement, { childList: true, subtree: true });
 
   /* ===============================================================
    * 1. FORCE DARK MODE
