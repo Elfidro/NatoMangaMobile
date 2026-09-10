@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NatoManga - Mobile UI (always dark)
 // @namespace    luigi.natomanga
-// @version      1.1.0
+// @version      1.2.0
 // @description  Slim sticky header, forced dark mode, bottom thumb-zone nav, native swipe carousel, cleaner cards, per-manga blocklist, infinite scroll.
 // @author       Elfidro
 // @homepageURL  https://github.com/Elfidro/NatoMangaMobile
@@ -70,13 +70,26 @@
     b.classList.remove('light');
   }
 
-  new MutationObserver(function () {
-    if (!document.body) return;
+  // Watch ONLY the body's class attribute. Observing the whole tree fires
+  // this callback for every node inserted while the page parses - thousands
+  // of synchronous localStorage reads, which stalls load badly on a phone.
+  var themeObserver = new MutationObserver(pinDark);
+
+  function watchTheme() {
+    if (!document.body) return false;
     pinDark();
-    try {
-      if (localStorage.getItem('themeMode') !== 'dark') localStorage.setItem('themeMode', 'dark');
-    } catch (e) {}
-  }).observe(document.documentElement, { attributes: true, childList: true, subtree: true });
+    themeObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return true;
+  }
+
+  if (!watchTheme()) {
+    // <body> does not exist yet at document-start. A childList watch on
+    // documentElement alone (no subtree) is a couple of mutations, not thousands.
+    var bodyWatcher = new MutationObserver(function () {
+      if (watchTheme()) bodyWatcher.disconnect();
+    });
+    bodyWatcher.observe(document.documentElement, { childList: true });
+  }
 
   /* ===============================================================
    * 2. STYLES
@@ -672,7 +685,20 @@
   /* ===============================================================
    * 6. BOOT
    * ============================================================= */
+  // Cloudflare serves its "verify you are human" interstitial from this same
+  // origin, so the script matches it too. Leave that page completely alone -
+  // anything we do there risks wedging the check and locking the site out.
+  function isChallengePage() {
+    return !!(window._cf_chl_opt ||
+      document.querySelector('script[src*="/cdn-cgi/challenge-platform/"]') ||
+      document.getElementById('challenge-form'));
+  }
+
   function init() {
+    if (isChallengePage()) {
+      console.info('[natomanga-mobile] challenge page - standing down');
+      return;
+    }
     pinDark();
     buildNav();
     buildSheet();
