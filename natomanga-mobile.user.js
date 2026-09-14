@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NatoManga - Mobile UI (always dark)
 // @namespace    luigi.natomanga
-// @version      1.5.0
+// @version      1.6.0
 // @description  Slim sticky header, forced dark mode, bottom thumb-zone nav, native swipe carousel, cleaner cards, per-manga blocklist, infinite scroll.
 // @author       Elfidro
 // @homepageURL  https://github.com/Elfidro/NatoMangaMobile
@@ -275,26 +275,34 @@
     '  .comic-list details.manga-filter-details > summary{padding:13px 12px!important;',
     '    color:var(--nm-text)!important;font:600 12px/1 var(--nm-font)!important;',
     '    letter-spacing:.06em;text-transform:uppercase;list-style:none;cursor:pointer;}',
+    /* No explicit rows. Children auto-place down column 2, so a card with
+       extra <div>s grows downward instead of stacking them in one cell.
+       Pinning every "> div" to a fixed row overlapped them on top of
+       each other - visible as doubled-up view counts. */
     '  .list-comic-item-wrap{position:relative;display:grid!important;',
-    '    grid-template-columns:74px 1fr;grid-template-rows:auto auto auto;',
+    '    grid-template-columns:74px 1fr;grid-auto-flow:row;',
     '    column-gap:11px;row-gap:5px;align-content:start;',
     '    float:none!important;width:auto!important;height:auto!important;margin:0!important;',
     '    min-width:0!important;max-width:100%!important;',
     '    padding:10px!important;border:1px solid var(--nm-line)!important;border-radius:14px!important;',
     '    background:var(--nm-surface)!important;box-shadow:0 2px 10px rgba(0,0,0,.35);}',
-    '  .list-comic-item-wrap .cover{grid-column:1;grid-row:1/4;display:block;',
+    /* Everything lands in column 2 and flows downward; the cover is the
+       one exception and spans the three rows beside it. */
+    '  .list-comic-item-wrap > *{grid-column:2;min-width:0;}',
+    '  .list-comic-item-wrap .cover{grid-column:1;grid-row:1/span 3;align-self:start;display:block;',
     '    width:74px!important;height:100px!important;border-radius:10px;overflow:hidden;',
     '    padding:0!important;margin:0!important;border:0!important;}',
     '  .list-comic-item-wrap .cover img{width:100%!important;height:100%!important;object-fit:cover;',
     '    border:0!important;border-radius:10px!important;}',
-    '  .list-comic-item-wrap h3{grid-column:2;grid-row:1;margin:0!important;padding-right:22px;}',
+    '  .list-comic-item-wrap h3{margin:0!important;padding-right:22px;}',
     '  .list-comic-item-wrap h3 a{color:var(--nm-text)!important;font:600 14px/1.3 var(--nm-font)!important;',
     '    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}',
-    '  .list-comic-item-wrap .list-story-item-wrap-chapter{grid-column:2;grid-row:2;justify-self:start;',
+    '  .list-comic-item-wrap .list-story-item-wrap-chapter{justify-self:start;',
     '    display:inline-block;white-space:nowrap;background:var(--nm-surface-2)!important;',
     '    color:var(--nm-chip)!important;padding:3px 10px!important;border-radius:999px!important;',
     '    font:500 12px/1.25 var(--nm-font)!important;text-decoration:none;}',
-    '  .list-comic-item-wrap > div{grid-column:2;grid-row:3;}',
+    /* Column only - never a fixed row, or multiple divs collide in one cell. */
+    '  .list-comic-item-wrap > div{grid-column:2;display:flex;align-items:center;gap:6px;}',
     '  .list-comic-item-wrap .aye_icon{color:var(--nm-muted)!important;font-size:11px!important;}',
     /* the long synopsis and its <br> spacers are desktop filler */
     '  .list-comic-item-wrap > p,.list-comic-item-wrap > br{display:none!important;}',
